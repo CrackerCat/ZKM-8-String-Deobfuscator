@@ -16,6 +16,7 @@ import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import me.lpk.antis.impl.AntiVertex.Deobfuscated;
+import me.lpk.util.AccessHelper;
 import me.lpk.util.OpUtils;
 import me.nov.zkmstrings.Deobfuscation;
 
@@ -127,6 +128,7 @@ public class ZKMUtils implements Opcodes {
    * @param cn
    *          With ZKM obfuscated ClassNode
    */
+  @SuppressWarnings("unused")
   public static ClassNode generateInvocation(ClassNode cn) {
     ClassNode decryptNode = new ClassNode();
     decryptNode.name = "zkm_obfuscated";
@@ -138,6 +140,22 @@ public class ZKMUtils implements Opcodes {
         // found decryption node
         String[] zkmArrayNames = getZKMArrayNames(mn);
         decryptNode.methods.add(renameRefs(cutClinit(mn), decryptNode.name));
+        //this normally doesn't happen, only when the used strings are only in the <clinit> method, because it doesn't need an array (but i'm too lazy to add a decryption for that)
+        if(zkmArrayNames[0] == null && Deobfuscation.FORCE_GUESS) {
+          //force add field
+          System.err.println(cn.name + ": couldn't find a field, guessing right field");
+          
+          //zkm arrays often have "bb" as name
+          int i = 0;
+          for(FieldNode fn : cn.fields) {
+            if(fn.desc.equals("[Ljava/lang/String;") && AccessHelper.isFinal(fn.access) && AccessHelper.isStatic(fn.access)) {
+              zkmArrayNames[i++] = fn.name;
+              if(i > 2) {
+                break;
+              }
+            }
+          }
+        }
         decryptNode.fields.add(new FieldNode(ACC_PUBLIC | ACC_STATIC, zkmArrayNames[0], "[Ljava/lang/String;", null, null));
         if (!Deobfuscation.SCND_METHOD) {
           decryptNode.fields.add(new FieldNode(ACC_PUBLIC | ACC_STATIC, zkmArrayNames[1], "[Ljava/lang/String;", null, null));

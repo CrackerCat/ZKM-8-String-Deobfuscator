@@ -26,8 +26,8 @@ public class Deobfuscation implements Opcodes {
   private Map<String, ClassNode> classes;
   private boolean success;
   public final static boolean SCND_METHOD = true;
-  public final static boolean REMOVE_STATICINVK = true;
-
+  public final static boolean REMOVE_STATICINVK = false;
+  public final static boolean FORCE_GUESS = false;
   public Deobfuscation(Map<String, ClassNode> classes) {
     this.classes = classes;
     this.success = false;
@@ -51,6 +51,7 @@ public class Deobfuscation implements Opcodes {
           Method clinit = loaded.getMethod("init_zkm");
           clinit.invoke(null); // invoke decryption
         } catch (Exception e) {
+          e.printStackTrace();
           System.out.println(e.toString());
           continue;
         }
@@ -72,8 +73,8 @@ public class Deobfuscation implements Opcodes {
                       int indx = InstructionUtils.getIntValue(next);
                       AbstractInsnNode aaload = next.getNext();
                       mn.instructions.insert(aaload, new LdcInsnNode(decrypted[indx]));
-                      System.out.println(decrypted[indx]);
-                      pw.println(decrypted[indx]);
+//                      System.out.println(decrypted[indx]);
+                      pw.println(cn.name + "." + mn.name + mn.desc + ": " + decrypted[indx]);
                       mn.instructions.insert(aaload, new InsnNode(POP));
                     }
                   }
