@@ -25,9 +25,16 @@ public class Deobfuscation implements Opcodes {
 
   private Map<String, ClassNode> classes;
   private boolean success;
-  public final static boolean SCND_METHOD = true;
+  
+  /**
+   * Disable if there are 2 stringarrays or there isn't a method with two ints as param (and returning a string)
+   */
+  public final static boolean NO_SCND_METHOD = false;
+  
   public final static boolean REMOVE_STATICINVK = false;
+  
   public final static boolean FORCE_GUESS = false;
+  
   public Deobfuscation(Map<String, ClassNode> classes) {
     this.classes = classes;
     this.success = false;
@@ -42,7 +49,7 @@ public class Deobfuscation implements Opcodes {
       PrintWriter pw = new PrintWriter("strings.txt");
       for (ClassNode cn : classes.values()) {
         ClassNode invocationNode = ZKMUtils.generateInvocation(cn);
-        if (invocationNode == null || invocationNode.methods.size() < (SCND_METHOD ? 1 : 2)) {
+        if (invocationNode == null || invocationNode.methods.size() < (NO_SCND_METHOD ? 1 : 2)) {
           continue;
         }
         Class<?> loaded = null;
@@ -52,10 +59,15 @@ public class Deobfuscation implements Opcodes {
           clinit.invoke(null); // invoke decryption
         } catch (Exception e) {
           e.printStackTrace();
-          System.out.println(e.toString());
+          System.out.println(e.toString() + " at " + cn.name);
+          if(e.getCause() != null) {
+            Throwable t = e.getCause();
+            System.out.println("caused by " + t.toString() + ((t instanceof NoSuchFieldError) ? " (disable NO_SCND_METHOD?)" : ""));
+          }
           continue;
         }
-        if (SCND_METHOD) {
+        if (NO_SCND_METHOD) {
+          //code for versions older than zkm 8
           String[] decrypted = null;
           Field array = loaded.getDeclaredField(invocationNode.fields.get(0).name);
           decrypted = (String[]) array.get(null);
@@ -73,7 +85,6 @@ public class Deobfuscation implements Opcodes {
                       int indx = InstructionUtils.getIntValue(next);
                       AbstractInsnNode aaload = next.getNext();
                       mn.instructions.insert(aaload, new LdcInsnNode(decrypted[indx]));
-//                      System.out.println(decrypted[indx]);
                       pw.println(cn.name + "." + mn.name + mn.desc + ": " + decrypted[indx]);
                       mn.instructions.insert(aaload, new InsnNode(POP));
                     }
@@ -84,9 +95,8 @@ public class Deobfuscation implements Opcodes {
           }
           continue;
         }
-        // Field array = loaded.getFields()[0];
-        // String[] decrypted = (String[]) array.get(null); // get results
 
+        //code for version 8+
         Method decrypt = loaded.getMethod("decrypt_array", new Class[] { int.class, int.class });
         for (MethodNode mn : cn.methods) { // find decrypt calls
           for (AbstractInsnNode ain : mn.instructions.toArray()) {

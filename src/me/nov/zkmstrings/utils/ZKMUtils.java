@@ -52,8 +52,9 @@ public class ZKMUtils implements Opcodes {
       first = first.getNext();
     }
 
-    if (end == null)
-      return mn; // no end of code found, returning original method
+    if (end == null) {
+        return mn; // no end of code found, returning original method
+    }
     MethodNode init = new MethodNode(ACC_PUBLIC | ACC_STATIC, "init_zkm", "()V", null, null); // construct new method for decryption
     init.instructions = MethodUtils.clone(mn.instructions, end);
     init.localVariables = null;
@@ -141,27 +142,27 @@ public class ZKMUtils implements Opcodes {
         String[] zkmArrayNames = getZKMArrayNames(mn);
         decryptNode.methods.add(renameRefs(cutClinit(mn), decryptNode.name));
         //this normally doesn't happen, only when the used strings are only in the <clinit> method, because it doesn't need an array (but i'm too lazy to add a decryption for that)
-        if(zkmArrayNames[0] == null && Deobfuscation.FORCE_GUESS) {
+        if (zkmArrayNames[0] == null && Deobfuscation.FORCE_GUESS) {
           //force add field
           System.err.println(cn.name + ": couldn't find a field, guessing right field");
-          
+
           //zkm arrays often have "bb" as name
           int i = 0;
-          for(FieldNode fn : cn.fields) {
-            if(fn.desc.equals("[Ljava/lang/String;") && AccessHelper.isFinal(fn.access) && AccessHelper.isStatic(fn.access)) {
+          for (FieldNode fn : cn.fields) {
+            if (fn.desc.equals("[Ljava/lang/String;") && AccessHelper.isFinal(fn.access) && AccessHelper.isStatic(fn.access)) {
               zkmArrayNames[i++] = fn.name;
-              if(i > 2) {
+              if (i > 2) {
                 break;
               }
             }
           }
         }
         decryptNode.fields.add(new FieldNode(ACC_PUBLIC | ACC_STATIC, zkmArrayNames[0], "[Ljava/lang/String;", null, null));
-        if (!Deobfuscation.SCND_METHOD) {
+        if (!Deobfuscation.NO_SCND_METHOD) {
           decryptNode.fields.add(new FieldNode(ACC_PUBLIC | ACC_STATIC, zkmArrayNames[1], "[Ljava/lang/String;", null, null));
         }
       }
-      if (!Deobfuscation.SCND_METHOD) {
+      if (!Deobfuscation.NO_SCND_METHOD) {
         if (mn.desc.equals("(II)Ljava/lang/String;") && isZKMDecrypt(mn)) {
           decryptNode.methods.add(renameRefs(cloneDecrypt(mn), decryptNode.name));
         }
